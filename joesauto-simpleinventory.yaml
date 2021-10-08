@@ -1,0 +1,99 @@
+apiVersion: v1
+kind: Service
+metadata:
+    name: inventory
+    labels:
+      run: inventory
+spec:
+    ports:
+    - port: 80
+      protocol: TCP
+      targetPort: 80
+    selector:
+        app: inventory-pod
+    type: ClusterIP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: inventory-deployment
+spec:
+  selector:
+    matchLabels:
+      app: inventory-pod
+  replicas: 2
+  template:
+    metadata:
+      labels:
+        app: inventory-pod
+    spec:
+      containers:
+        - name: inventory-container
+          image: inventorycontainer:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 80
+              protocol: TCP             
+--- 
+apiVersion: v1
+kind: Service
+metadata:
+    name: joesautosales
+    labels:
+      run: joesautosales
+spec:
+    ports:
+    - port: 5000
+      protocol: TCP
+      targetPort: 80
+    selector:
+        app: joesautosales-pod
+    type: ClusterIP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: joesautosales-deployment
+spec:
+  selector:
+    matchLabels:
+      app: joesautosales-pod
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: joesautosales-pod
+    spec:
+      containers:
+        - name: joesautosales-container
+          image: joesautosalesapp:latest
+          env:
+          - name: InventoryAPI
+            value: $(INVENTORY_SERVICE_HOST)
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 80
+              protocol: TCP           
+--- 
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+    name: joesautosales-ingress
+spec:
+    rules:
+    - http:
+        paths:
+        - path: /
+          pathType: Prefix
+          backend:
+            service:
+              name: joesautosales
+              port:
+                number: 80     
+        - path: /inventoryendpoint
+          pathType: Exact
+          backend:
+            service:
+              name: inventory
+              port:
+                number: 80
